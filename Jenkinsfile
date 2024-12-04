@@ -3,16 +3,13 @@ pipeline {
 
     environment {
         IMAGE_NAME = "fuse_blog_web"
-        CONTAINER_NAME = "fuse_blog_web"
+        CONTAINER_NAME = "fuse_blog_web_1"
         APP_PORT = "8000"
     }
 
     stages {
         stage('Checkout') {
             steps {
-                script {
-                    echo "Checking out the repository..."
-                }
                 git branch: 'main', url: 'https://github.com/lucy12345679/fuse-blog.git'
             }
         }
@@ -23,13 +20,6 @@ pipeline {
                 echo "Setting up virtual environment..."
                 python3 -m venv .venv
                 . .venv/bin/activate
-
-                # Verify requirements.txt
-                if [ ! -f requirements.txt ]; then
-                    echo "ERROR: requirements.txt file not found!"
-                    exit 1
-                fi
-
                 pip install --upgrade pip
                 pip install -r requirements.txt
                 '''
@@ -59,10 +49,8 @@ pipeline {
         stage('Test') {
             steps {
                 sh '''
-                echo "Running automated tests with pytest..."
+                echo "Running tests with pytest..."
                 . .venv/bin/activate
-
-                # Run tests and generate a coverage report
                 pytest --cov=apps
                 '''
             }
@@ -82,12 +70,21 @@ pipeline {
                 script {
                     echo "Stopping and removing existing container..."
                     sh '''
-                    docker ps -aq -f name=${CONTAINER_NAME} | xargs -r docker stop || true
-                    docker ps -aq -f name=${CONTAINER_NAME} | xargs -r docker rm || true
+                    sudo docker ps -aq -f name=${CONTAINER_NAME} | xargs -r sudo docker stop || true
+                    sudo docker ps -aq -f name=${CONTAINER_NAME} | xargs -r sudo docker rm || true
                     echo "Running the new container..."
-                    docker run -d --name ${CONTAINER_NAME} -p ${APP_PORT}:${APP_PORT} ${IMAGE_NAME}
+                    sudo docker run -d --name ${CONTAINER_NAME} -p ${APP_PORT}:${APP_PORT} ${IMAGE_NAME}
                     '''
                 }
+            }
+        }
+
+        stage('Run Tests in Container') {
+            steps {
+                sh '''
+                echo "Running tests inside the container..."
+                docker exec ${CONTAINER_NAME} python manage.py test
+                '''
             }
         }
 
@@ -117,10 +114,10 @@ pipeline {
             cleanWs()
         }
         success {
-            echo "Pipeline completed successfully: linting, security scan, build, tests, and static file collection!"
+            echo 'Pipeline completed successfully: linting, security scan, build, tests, and static file collection!'
         }
         failure {
-            echo "Pipeline failed. Check the logs for details."
+            echo 'Pipeline failed. Check the logs for details.'
         }
     }
 }
