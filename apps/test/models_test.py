@@ -192,13 +192,10 @@ def test_multiple_comments_on_blog():
 
 @pytest.mark.django_db
 def test_district_creation():
-    # Create a region
     region = Region.objects.create(name="Test Region")
-
-    # Create a district linked to the region
     district = District.objects.create(name="Test District", region=region)
 
-    # Verify the district attributes
+    # Validate field values
     assert district.name == "Test District"
     assert district.region == region
 
