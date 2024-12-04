@@ -24,10 +24,9 @@ pipeline {
                 python3 -m venv .venv
                 . .venv/bin/activate
 
-                # Verify that requirements.txt exists
+                # Verify requirements.txt
                 if [ ! -f requirements.txt ]; then
                     echo "ERROR: requirements.txt file not found!"
-                    ls -la
                     exit 1
                 fi
 
@@ -63,7 +62,7 @@ pipeline {
                 echo "Running automated tests with pytest..."
                 . .venv/bin/activate
 
-                # Run tests and generate coverage report
+                # Run tests and generate a coverage report
                 pytest --cov=apps
                 '''
             }
@@ -121,7 +120,4 @@ pipeline {
             echo 'Pipeline completed successfully: linting, security scan, build, tests, and static file collection!'
         }
         failure {
-            echo 'Pipeline failed. Check the logs for details.'
-        }
-    }
-}
+            echo 'Pipeline failed.

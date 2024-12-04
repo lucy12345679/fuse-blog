@@ -1,6 +1,6 @@
 import pytest
 from django.utils.text import slugify
-
+from django.contrib.auth.hashers import make_password
 from apps.models import Site, CustomUser, Category, Blog, BlogViewing, Message, Region, District, Comment
 
 
@@ -20,8 +20,9 @@ def test_site_str():
 
 @pytest.mark.django_db
 def test_blog_slug():
+    password = make_password("securepassword")
     user = CustomUser.objects.create_user(
-        username="author", email="author@example.com", password="password123"
+        username="author", email="author@example.com", password=password
     )
     category = Category.objects.create(name="Test Category")
     blog = Blog.objects.create(
@@ -38,7 +39,7 @@ def test_blog_slug():
 @pytest.mark.django_db
 def test_blog_viewing():
     user = CustomUser.objects.create_user(
-        username="viewer", email="viewer@example.com", password="password123"
+        username="viewer", email="viewer@example.com", password=make_password("securepassword")
     )
     blog = Blog.objects.create(
         title="Test Blog",
@@ -54,7 +55,7 @@ def test_blog_viewing():
 @pytest.mark.django_db
 def test_message_creation():
     user = CustomUser.objects.create_user(
-        username="messenger", email="messenger@example.com", password="password123"
+        username="messenger", email="messenger@example.com", password=make_password("securepassword")
     )
     message = Message.objects.create(
         author=user,
@@ -71,9 +72,10 @@ def test_region_and_district_creation():
     region = Region.objects.create(name="Test Region")
     district = District.objects.create(name="Test District", region=region)
 
+    assert district.name == "Test District"
     assert district.region == region
-    assert str(region.name) == "Test Region"
-    assert str(district.name) == "Test District"
+    assert str(region) == "Test Region"
+    assert str(district) == "Test District"
 
 
 @pytest.mark.django_db
@@ -86,6 +88,7 @@ def test_category_without_slug():
     duplicate_category = Category.objects.create(name="Technology")
     assert duplicate_category.slug != slugify("Technology")
     assert duplicate_category.slug.startswith("technology-")
+
 
 @pytest.mark.django_db
 def test_active_blogs_manager():
@@ -118,6 +121,7 @@ def test_active_blogs_manager():
     assert blog2 in active_blogs
     assert blog3 not in active_blogs
 
+
 @pytest.mark.django_db
 def test_cancel_blogs_manager():
     blog1 = Blog.objects.create(
@@ -144,9 +148,9 @@ def test_cancel_blogs_manager():
     assert blog3 in canceled_blogs
     assert blog1 not in canceled_blogs
 
+
 @pytest.mark.django_db
 def test_blog_slug_auto_generation():
-    # Create a blog without providing a slug
     blog = Blog.objects.create(
         title="Test Blog",
         description="This is a test blog",
@@ -164,40 +168,35 @@ def test_blog_slug_auto_generation():
     assert duplicate_blog.slug != "test-blog"
     assert duplicate_blog.slug.startswith("test-blog")
 
+
 @pytest.mark.django_db
 def test_multiple_comments_on_blog():
-    # Create a user
     user = CustomUser.objects.create_user(
         username="testuser",
         email="testuser@example.com",
-        password="securepassword",
+        password=make_password("securepassword"),
     )
 
-    # Create a blog
     blog = Blog.objects.create(
         title="Test Blog",
         description="This is a test blog",
         is_active=Blog.Active.ACTIVE,
     )
 
-    # Create multiple comments
     Comment.objects.create(comment="First comment.", author=user, blog=blog)
     Comment.objects.create(comment="Second comment.", author=user, blog=blog)
 
-    # Retrieve comments using the related name
     comments = blog.comment_set.all()
     assert comments.count() == 2
     assert comments[0].comment == "First comment."
     assert comments[1].comment == "Second comment."
+
 
 @pytest.mark.django_db
 def test_district_creation():
     region = Region.objects.create(name="Test Region")
     district = District.objects.create(name="Test District", region=region)
 
-    # Validate field values
     assert district.name == "Test District"
     assert district.region == region
-
-    # Ensure string representation matches the name
     assert str(district) == "Test District"
