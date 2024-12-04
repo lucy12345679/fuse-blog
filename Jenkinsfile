@@ -117,7 +117,10 @@ pipeline {
             cleanWs()
         }
         success {
-            echo 'Pipeline completed successfully: linting, security scan, build, tests, and static file collection!'
+            echo "Pipeline completed successfully: linting, security scan, build, tests, and static file collection!"
         }
         failure {
-            echo 'Pipeline failed.
+            echo "Pipeline failed. Check the logs for details."
+        }
+    }
+}
