@@ -3,9 +3,8 @@ pipeline {
 
     environment {
         IMAGE_NAME = "fuse_blog_web"
-        CONTAINER_NAME = "fuse_blog_web"
+        CONTAINER_NAME = "fuse_blog_web_1"
         APP_PORT = "8000"
-        DJANGO_SETTINGS_MODULE = "your_project_name.settings"
     }
 
     stages {
@@ -52,8 +51,7 @@ pipeline {
                 sh '''
                 echo "Running tests with pytest..."
                 . .venv/bin/activate
-                export DJANGO_SETTINGS_MODULE=your_project_name.settings
-                pytest --ds=your_project_name.settings --cov=apps
+                pytest --ds=fuse_blog.settings --cov=apps
                 '''
             }
         }
@@ -72,10 +70,10 @@ pipeline {
                 script {
                     echo "Stopping and removing existing container..."
                     sh '''
-                    docker ps -aq -f name=${CONTAINER_NAME} | xargs -r docker stop || true
-                    docker ps -aq -f name=${CONTAINER_NAME} | xargs -r docker rm || true
+                    docker ps -aq -f name=fuse_blog_web_1 | xargs -r docker stop || true
+                    docker ps -aq -f name=fuse_blog_web_1 | xargs -r docker rm || true
                     echo "Running the new container..."
-                    docker run -d --name ${CONTAINER_NAME} -p ${APP_PORT}:${APP_PORT} ${IMAGE_NAME}
+                    docker run -d --name fuse_blog_web_1 -p 8000:8000 fuse_blog_web
                     '''
                 }
             }

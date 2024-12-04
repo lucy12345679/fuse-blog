@@ -4,7 +4,7 @@ services:
   web:
     build:
       context: .
-    container_name: fuse_blog_web
+    container_name: fuse_blog_web_1
     command: python manage.py runserver 0.0.0.0:8000
     volumes:
       - .:/app
