@@ -10,6 +10,9 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
+                script {
+                    echo "Checking out the repository..."
+                }
                 git branch: 'main', url: 'https://github.com/lucy12345679/fuse-blog.git'
             }
         }
@@ -20,6 +23,14 @@ pipeline {
                 echo "Setting up virtual environment..."
                 python3 -m venv .venv
                 . .venv/bin/activate
+
+                # Verify that requirements.txt exists
+                if [ ! -f requirements.txt ]; then
+                    echo "ERROR: requirements.txt file not found!"
+                    ls -la
+                    exit 1
+                fi
+
                 pip install --upgrade pip
                 pip install -r requirements.txt
                 '''
