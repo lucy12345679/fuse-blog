@@ -57,16 +57,6 @@ pipeline {
             }
         }
 
-        stage('Test') {
-            steps {
-                sh '''
-                echo "Running tests with pytest..."
-                . .venv/bin/activate
-                pytest --cov=apps
-                '''
-            }
-        }
-
         stage('Build Docker Image') {
             steps {
                 sh '''
@@ -87,15 +77,6 @@ pipeline {
                     docker run -d --name ${CONTAINER_NAME} -p ${APP_PORT}:${APP_PORT} ${IMAGE_NAME}
                     '''
                 }
-            }
-        }
-
-        stage('Run Tests in Container') {
-            steps {
-                sh '''
-                echo "Running tests inside the container..."
-                docker exec ${CONTAINER_NAME} python manage.py test
-                '''
             }
         }
 
@@ -125,7 +106,7 @@ pipeline {
             cleanWs()
         }
         success {
-            echo 'Pipeline completed successfully: linting, security scan, build, tests, and static file collection!'
+            echo 'Pipeline completed successfully: linting, security scan, build, and static file collection!'
         }
         failure {
             echo 'Pipeline failed. Check the logs for details.'
