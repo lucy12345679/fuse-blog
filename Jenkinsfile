@@ -64,7 +64,7 @@ pipeline {
                 . .venv/bin/activate
 
                 # Run tests and generate coverage report
-                pytest --cov=apps --cov-report=xml --cov-report=term
+                pytest --cov=apps
                 '''
             }
         }
