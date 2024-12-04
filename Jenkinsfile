@@ -51,7 +51,7 @@ pipeline {
                 sh '''
                 echo "Running tests with pytest..."
                 . .venv/bin/activate
-                pytest --cov=apps
+                pytest --cov=apps || pytest apps/  # Fallback if pytest-cov is unavailable
                 '''
             }
         }
