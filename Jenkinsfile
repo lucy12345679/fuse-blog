@@ -57,6 +57,18 @@ pipeline {
             }
         }
 
+        stage('Test') {
+            steps {
+                sh '''
+                echo "Running automated tests with pytest..."
+                . .venv/bin/activate
+
+                # Run tests and generate coverage report
+                pytest --cov=apps --cov-report=xml --cov-report=term
+                '''
+            }
+        }
+
         stage('Build Docker Image') {
             steps {
                 sh '''
@@ -106,7 +118,7 @@ pipeline {
             cleanWs()
         }
         success {
-            echo 'Pipeline completed successfully: linting, security scan, build, and static file collection!'
+            echo 'Pipeline completed successfully: linting, security scan, build, tests, and static file collection!'
         }
         failure {
             echo 'Pipeline failed. Check the logs for details.'

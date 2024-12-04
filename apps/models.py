@@ -34,7 +34,7 @@ class Site(Model):
 class CustomUser(AbstractUser):
     email = EmailField(max_length=255, unique=True)
     phone = CharField(max_length=255, unique=True, null=True, blank=True)
-    birthday = DateField(auto_now_add=True)
+    birthday = DateField(null=True, blank=True)
     description = TextField(null=True, blank=True)
     majority = CharField(max_length=255, null=True, blank=True)
     photo = ImageField(default='users/desfaultuser.png')
@@ -216,3 +216,10 @@ class Region(Model):
 class District(Model):
     name = CharField(max_length=255)
     region = ForeignKey('apps.Region', CASCADE)
+
+    class Meta:
+        verbose_name = 'District'
+        verbose_name_plural = 'Districts'
+
+    def __str__(self):
+        return self.name
