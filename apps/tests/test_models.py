@@ -2,7 +2,7 @@ from django.test import TestCase
 from django.utils.text import slugify
 from django.contrib.auth.hashers import make_password
 from apps.models import Site, CustomUser, Category, Blog, BlogViewing, Message, Region, District, Comment
-
+from datetime import date
 
 class SiteModelTest(TestCase):
     def setUp(self):
@@ -41,9 +41,10 @@ class BlogModelTest(TestCase):
     def setUp(self):
         password = make_password("securepassword")
         self.user = CustomUser.objects.create_user(
-            username="author",
-            email="author@example.com",
-            password=password
+            username="testuser",
+            email="testuser@example.com",
+            password=make_password("securepassword"),
+            birthday=date(2000, 1, 1)  # Provide a valid birthday value
         )
         self.category = Category.objects.create(name="Test Category")
         self.blog = Blog.objects.create(
@@ -81,9 +82,10 @@ class MessageModelTest(TestCase):
     def setUp(self):
         password = make_password("securepassword")
         self.user = CustomUser.objects.create_user(
-            username="messenger",
-            email="messenger@example.com",
-            password=password
+            username="testuser",
+            email="testuser@example.com",
+            password=make_password("securepassword"),
+            birthday=date(2000, 1, 1)  # Provide a valid birthday value
         )
         self.message = Message.objects.create(
             author=self.user,
@@ -119,7 +121,8 @@ class CommentModelTest(TestCase):
         self.user = CustomUser.objects.create_user(
             username="testuser",
             email="testuser@example.com",
-            password=password
+            password=make_password("securepassword"),
+            birthday=date(2000, 1, 1)  # Provide a valid birthday value
         )
         self.blog = Blog.objects.create(
             title="Test Blog",
