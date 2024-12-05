@@ -11,10 +11,7 @@ pipeline {
         stage('Checkout') {
             steps {
                 retry(3) {
-                    sh '''
-                    echo "Cloning repository with shallow depth..."
-                    git clone --depth 1 --branch main https://github.com/lucy12345679/fuse-blog.git .
-                    '''
+                    git branch: 'main', url: 'https://github.com/lucy12345679/fuse-blog.git'
                 }
             }
         }
