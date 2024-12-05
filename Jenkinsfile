@@ -10,12 +10,12 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                cleanWs() // Ensure workspace is clean before cloning
-                git branch: 'main', url: 'https://github.com/lucy12345679/fuse-blog.git'
+                retry(3) {
+                    cleanWs() // Ensure workspace is clean before cloning
+                    git branch: 'main', url: 'https://github.com/lucy12345679/fuse-blog.git'
+                }
             }
         }
-    }
-
 
         stage('Setup Virtual Environment') {
             steps {
