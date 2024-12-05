@@ -11,14 +11,10 @@ pipeline {
         stage('Checkout') {
             steps {
                 retry(3) {
-                    git(
-                        branch: 'main',
-                        url: 'https://github.com/lucy12345679/fuse-blog.git',
-                        changelog: false,
-                        poll: false,
-                        shallow: true,
-                        depth: 1
-                    )
+                    sh '''
+                    echo "Cloning repository with shallow depth..."
+                    git clone --depth 1 --branch main https://github.com/lucy12345679/fuse-blog.git .
+                    '''
                 }
             }
         }
@@ -87,10 +83,10 @@ pipeline {
                 script {
                     echo "Stopping and removing existing container..."
                     sh '''
-                    docker ps -aq -f name=fuse_blog_web_1 | xargs -r docker stop || true
-                    docker ps -aq -f name=fuse_blog_web_1 | xargs -r docker rm || true
+                    docker ps -aq -f name=${CONTAINER_NAME} | xargs -r docker stop || true
+                    docker ps -aq -f name=${CONTAINER_NAME} | xargs -r docker rm || true
                     echo "Running the new container..."
-                    docker run -d --name fuse_blog_web_1 -p 8000:8000 fuse_blog_web
+                    docker run -d --name ${CONTAINER_NAME} -p ${APP_PORT}:${APP_PORT} ${IMAGE_NAME}
                     '''
                 }
             }
