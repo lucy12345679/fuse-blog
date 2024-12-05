@@ -51,6 +51,8 @@ pipeline {
                 sh '''
                 echo "Running tests with pytest..."
                 . .venv/bin/activate
+                export PYTHONPATH=$(pwd)
+                export DJANGO_SETTINGS_MODULE=root.settings
                 pytest --ds=root.settings --cov=apps
                 '''
             }
