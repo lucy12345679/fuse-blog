@@ -31,7 +31,7 @@ pipeline {
                 sh '''
                 echo "Running linting with pylint..."
                 . .venv/bin/activate
-                pylint --rcfile=.pylintrc apps/ || true
+                pylint apps/ || true
                 '''
             }
         }
@@ -53,7 +53,13 @@ pipeline {
                 . .venv/bin/activate
                 export PYTHONPATH=$(pwd)
                 export DJANGO_SETTINGS_MODULE=root.settings
-                pytest --ds=root.settings --cov=apps
+
+                if python -m pytest --help | grep -q -- --cov; then
+                    pytest --ds=root.settings --cov=apps
+                else
+                    echo "pytest-cov not available; running tests without coverage."
+                    pytest --ds=root.settings
+                fi
                 '''
             }
         }
