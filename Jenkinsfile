@@ -10,7 +10,16 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                git branch: 'main', url: 'https://github.com/lucy12345679/fuse-blog.git'
+                retry(3) {
+                    git(
+                        branch: 'main',
+                        url: 'https://github.com/lucy12345679/fuse-blog.git',
+                        changelog: false,
+                        poll: false,
+                        shallow: true,
+                        depth: 1
+                    )
+                }
             }
         }
 
