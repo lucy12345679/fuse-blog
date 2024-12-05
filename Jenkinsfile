@@ -51,7 +51,7 @@ pipeline {
                 sh '''
                 echo "Running tests with pytest..."
                 . .venv/bin/activate
-                pytest --ds=fuse_blog.settings --cov=apps
+                pytest --ds=root.settings --cov=apps
                 '''
             }
         }
