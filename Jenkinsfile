@@ -5,6 +5,9 @@ pipeline {
         IMAGE_NAME = "fuse_blog_web"
         CONTAINER_NAME = "fuse_blog_web_1"
         APP_PORT = "8000"
+        DEPLOY_SERVER = "161.35.208.242"  // Your server IP
+        DEPLOY_USER = "root"  // SSH user for the server
+        DEPLOY_PATH = "/root"  // Path on the server where the app will be deployed
     }
 
     stages {
@@ -108,6 +111,25 @@ pipeline {
             }
         }
 
+        stage('Deploy to Production') {
+            steps {
+                script {
+                    echo "Deploying directly to the server..."
+
+                    // SSH into the production server and deploy the Docker container
+                    sh '''
+                    ssh ${DEPLOY_USER}@${DEPLOY_SERVER} "
+                    cd ${DEPLOY_PATH} || exit
+                    docker pull ${IMAGE_NAME} || true
+                    docker stop ${CONTAINER_NAME} || true
+                    docker rm ${CONTAINER_NAME} || true
+                    docker run -d --name ${CONTAINER_NAME} -p ${APP_PORT}:${APP_PORT} ${IMAGE_NAME}
+                    "
+                    '''
+                }
+            }
+        }
+
         stage('Clean Up') {
             steps {
                 sh '''
@@ -125,7 +147,7 @@ pipeline {
             cleanWs()
         }
         success {
-            echo 'Pipeline completed successfully: linting, security scan, build, tests, and static file collection!'
+            echo 'Pipeline completed successfully: linting, security scan, build, tests, static file collection, and deployment!'
         }
         failure {
             echo 'Pipeline failed. Check the logs for details.'
