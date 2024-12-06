@@ -28,7 +28,7 @@ SECRET_KEY = 'django-insecure-=9=s9i7&3d%41pp5d1&bap7*(kd4o!_0&m*arh0h*q*o$y4c5+
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = ['161.35.208.242']
 
 AUTHENTICATION_BACKENDS = [
     # Needed to login by username in Django admin, regardless of `allauth`
@@ -81,8 +81,7 @@ ROOT_URLCONF = 'root.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'templates']
-        ,
+        'DIRS': [os.path.join(BASE_DIR, 'templates')],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -95,7 +94,6 @@ TEMPLATES = [
                 'apps.utils.context_processors.context_best',
                 'apps.utils.context_processors.context_trending_posts',
                 'apps.utils.context_processors.context_site_info',
-
                 # `allauth` needs this from django
                 'django.template.context_processors.request',
             ],
