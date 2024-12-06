@@ -82,10 +82,15 @@ pipeline {
             steps {
                 script {
                     echo "Stopping and removing existing container..."
+
+                    // Stop the container if running
                     sh '''
-                    docker ps -aq -f name=${CONTAINER_NAME} | xargs -r docker stop --force || true
-                    docker ps -aq -f name=${CONTAINER_NAME} | xargs -r docker rm --force || true
+                    docker ps -aq -f name=${CONTAINER_NAME} | xargs -r docker stop || true
+                    docker ps -aq -f name=${CONTAINER_NAME} | xargs -r docker rm || true
+                    '''
+
                     echo "Running the new container..."
+                    sh '''
                     docker run -d --name ${CONTAINER_NAME} -p ${APP_PORT}:${APP_PORT} ${IMAGE_NAME}
                     '''
                 }
