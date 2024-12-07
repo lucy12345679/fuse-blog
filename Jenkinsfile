@@ -35,6 +35,12 @@ pipeline {
                     echo "Stopping and removing any existing container..."
                     docker ps -aq -f name=${CONTAINER_NAME} | xargs -r docker rm -f || true
 
+                    echo "Checking if port ${APP_PORT} is in use..."
+                    if lsof -i:${APP_PORT} -sTCP:LISTEN | grep -q ${APP_PORT}; then
+                        echo "Port ${APP_PORT} is in use. Stopping the process..."
+                        lsof -i:${APP_PORT} -sTCP:LISTEN | awk 'NR>1 {print $2}' | xargs -r kill -9 || true
+                    fi
+
                     echo "Running a new Docker container..."
                     docker run -d --name ${CONTAINER_NAME} -p ${APP_PORT}:${APP_PORT} ${IMAGE_NAME}
                     '''
@@ -82,8 +88,9 @@ pipeline {
             sh '''
             echo "Cleaning up local container..."
             docker ps -aq -f name=${CONTAINER_NAME} | xargs -r docker rm -f || true
-            cleanWs()
             '''
+            echo "Cleaning up workspace..."
+            cleanWs()
         }
         success {
             echo "Pipeline completed successfully!"
