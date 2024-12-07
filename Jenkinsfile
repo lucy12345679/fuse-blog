@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         IMAGE_NAME = "fuse_blog_web"
-        CONTAINER_NAME = "fuse_blog_web_1"
+        CONTAINER_NAME = "fuse_blog_web_${BUILD_ID}"
         APP_PORT = "8000"
         SERVER_IP = "161.35.208.242"
         SERVER_USER = "root"
@@ -83,10 +83,9 @@ pipeline {
                 script {
                     echo "Stopping and removing existing container..."
 
-                    // Stop the container if running
+                    // Stop and remove the container forcibly
                     sh '''
-                    docker ps -aq -f name=${CONTAINER_NAME} | xargs -r docker stop || true
-                    docker ps -aq -f name=${CONTAINER_NAME} | xargs -r docker rm || true
+                    docker ps -aq -f name=${CONTAINER_NAME} | xargs -r docker rm -f || true
                     '''
 
                     echo "Running the new container..."
@@ -120,11 +119,10 @@ pipeline {
                 script {
                     echo "Deploying directly to the server..."
                     sh '''
-                    ssh -o StrictHostKeyChecking=no root@${SERVER_IP} "
+                    ssh -o StrictHostKeyChecking=no ${SERVER_USER}@${SERVER_IP} "
                         cd /root || exit
                         docker pull ${IMAGE_NAME} || true
-                        docker stop ${CONTAINER_NAME} || true
-                        docker rm ${CONTAINER_NAME} || true
+                        docker ps -aq -f name=${CONTAINER_NAME} | xargs -r docker rm -f || true
                         docker run -d --name ${CONTAINER_NAME} -p ${APP_PORT}:${APP_PORT} ${IMAGE_NAME}
                     "
                     '''
@@ -136,8 +134,7 @@ pipeline {
             steps {
                 sh '''
                 echo "Cleaning up container..."
-                docker stop ${CONTAINER_NAME} || true
-                docker rm ${CONTAINER_NAME} || true
+                docker ps -aq -f name=${CONTAINER_NAME} | xargs -r docker rm -f || true
                 '''
             }
         }
@@ -145,6 +142,10 @@ pipeline {
 
     post {
         always {
+            sh '''
+            echo "Cleaning up container..."
+            docker ps -aq -f name=${CONTAINER_NAME} | xargs -r docker rm -f || true
+            '''
             echo "Cleaning up workspace..."
             cleanWs()
         }
