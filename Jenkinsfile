@@ -4,9 +4,10 @@ pipeline {
     environment {
         IMAGE_NAME = "fuse_blog_web"
         CONTAINER_NAME = "fuse_blog_web_${BUILD_ID}"
-        APP_PORT = "8000"
-        SERVER_IP = "161.35.208.242"
-        SERVER_USER = "root"
+        APP_PORT = "8000"                     // Application port inside the container
+        HOST_PORT = "8000"                    // Host port (dynamic allocation recommended)
+        SERVER_IP = "161.35.208.242"          // Remote server IP
+        SERVER_USER = "root"                  // SSH user
     }
 
     stages {
@@ -35,14 +36,17 @@ pipeline {
                     echo "Stopping and removing any existing container..."
                     docker ps -aq -f name=${CONTAINER_NAME} | xargs -r docker rm -f || true
 
-                    echo "Checking if port ${APP_PORT} is in use..."
-                    if lsof -i:${APP_PORT} -sTCP:LISTEN | grep -q ${APP_PORT}; then
-                        echo "Port ${APP_PORT} is in use. Stopping the process..."
-                        lsof -i:${APP_PORT} -sTCP:LISTEN | awk 'NR>1 {print $2}' | xargs -r kill -9 || true
+                    echo "Checking for conflicting containers using port ${HOST_PORT}..."
+                    CONFLICTING_CONTAINERS=$(docker ps --filter "publish=${HOST_PORT}" -q)
+                    if [ ! -z "$CONFLICTING_CONTAINERS" ]; then
+                        echo "Stopping conflicting containers..."
+                        echo "$CONFLICTING_CONTAINERS" | xargs -r docker stop || true
+                        echo "Removing conflicting containers..."
+                        echo "$CONFLICTING_CONTAINERS" | xargs -r docker rm || true
                     fi
 
-                    echo "Running a new Docker container..."
-                    docker run -d --name ${CONTAINER_NAME} -p ${APP_PORT}:${APP_PORT} ${IMAGE_NAME}
+                    echo "Running a new Docker container on host port ${HOST_PORT}..."
+                    docker run -d --name ${CONTAINER_NAME} -p ${HOST_PORT}:${APP_PORT} ${IMAGE_NAME}
                     '''
                 }
             }
