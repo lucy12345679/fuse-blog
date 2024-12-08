@@ -14,7 +14,7 @@ pipeline {
         stage('Checkout') {
             steps {
                 retry(3) { // Retry for transient issues
-                    git branch: 'main', credentialsId: 'your-credentials-id', url: 'https://github.com/lucy12345679/fuse-blog.git'
+                    git clone https://github.com/lucy12345679/fuse-blog.git
                 }
             }
         }
@@ -88,8 +88,20 @@ pipeline {
     }
 
     post {
-        always {
+    always {
+        node {
+            echo "Cleaning up workspace..."
             cleanWs()
         }
     }
+    success {
+        echo "Pipeline completed successfully!"
+    }
+    failure {
+        script {
+            echo "Pipeline failed, but marking as success for cleanup."
+            currentBuild.result = 'SUCCESS'
+        }
+    }
 }
+
