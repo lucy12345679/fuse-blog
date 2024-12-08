@@ -14,7 +14,7 @@ pipeline {
         stage('Checkout') {
             steps {
                 retry(3) { // Retry for transient issues
-                    git clone https://github.com/lucy12345679/fuse-blog.git
+                    git branch: 'main', credentialsId: 'your-credentials-id', url: 'https://github.com/lucy12345679/fuse-blog.git'
                 }
             }
         }
@@ -22,16 +22,10 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
-                    try {
-                        sh '''
-                        echo "Building Docker image..."
-                        docker build -t ${IMAGE_NAME} .
-                        '''
-                    } catch (Exception e) {
-                        echo "Docker image build failed: ${e.getMessage()}"
-                        currentBuild.result = 'FAILURE'
-                        error("Stopping pipeline due to Docker build failure.")
-                    }
+                    sh '''
+                    echo "Building Docker image..."
+                    docker build -t ${IMAGE_NAME} .
+                    '''
                 }
             }
         }
@@ -39,16 +33,10 @@ pipeline {
         stage('Run Tests') {
             steps {
                 script {
-                    try {
-                        sh '''
-                        echo "Running tests in the Docker container..."
-                        docker run --rm ${IMAGE_NAME} pytest
-                        '''
-                    } catch (Exception e) {
-                        echo "Tests failed: ${e.getMessage()}"
-                        currentBuild.result = 'FAILURE'
-                        error("Stopping pipeline due to test failure.")
-                    }
+                    sh '''
+                    echo "Running tests in the Docker container..."
+                    docker run --rm ${IMAGE_NAME} pytest
+                    '''
                 }
             }
         }
@@ -56,16 +44,10 @@ pipeline {
         stage('Static File Collection') {
             steps {
                 script {
-                    try {
-                        sh '''
-                        echo "Collecting static files..."
-                        docker run --rm ${IMAGE_NAME} python manage.py collectstatic --noinput
-                        '''
-                    } catch (Exception e) {
-                        echo "Static file collection failed: ${e.getMessage()}"
-                        currentBuild.result = 'FAILURE'
-                        error("Stopping pipeline due to static file collection failure.")
-                    }
+                    sh '''
+                    echo "Collecting static files..."
+                    docker run --rm ${IMAGE_NAME} python manage.py collectstatic --noinput
+                    '''
                 }
             }
         }
@@ -78,8 +60,8 @@ pipeline {
                     ssh -i /home/jenkins/.ssh/id_rsa -o StrictHostKeyChecking=no ${SERVER_USER}@${SERVER_IP} "
                         echo 'Pulling and running the Docker container...'
                         docker pull ${IMAGE_NAME}
-                        docker ps -aq -f name=${IMAGE_NAME} | xargs -r docker rm -f || true
-                        docker run -d --name ${IMAGE_NAME} -p 8000:8000 ${IMAGE_NAME}
+                        docker ps -aq -f name=${CONTAINER_NAME} | xargs -r docker rm -f || true
+                        docker run -d --name ${CONTAINER_NAME} -p ${APP_PORT}:${APP_PORT} ${IMAGE_NAME}
                     "
                     '''
                 }
@@ -88,20 +70,20 @@ pipeline {
     }
 
     post {
-    always {
-        node {
-            echo "Cleaning up workspace..."
-            cleanWs()
+        always {
+            node {
+                echo "Cleaning up workspace..."
+                cleanWs()
+            }
         }
-    }
-    success {
-        echo "Pipeline completed successfully!"
-    }
-    failure {
-        script {
-            echo "Pipeline failed, but marking as success for cleanup."
-            currentBuild.result = 'SUCCESS'
+        success {
+            echo "Pipeline completed successfully!"
+        }
+        failure {
+            script {
+                echo "Pipeline failed, but marking as success for cleanup."
+                currentBuild.result = 'SUCCESS'
+            }
         }
     }
 }
-
