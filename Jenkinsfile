@@ -62,8 +62,8 @@ pipeline {
 
     post {
         always {
-            node {
-                echo "Pipeline completed execution."
+            node('master') {  // Specify the label (e.g., 'master' or another agent label)
+                echo "Cleaning up workspace..."
                 cleanWs()
             }
         }
