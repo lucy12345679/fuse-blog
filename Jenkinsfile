@@ -13,26 +13,13 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                script {
-                    try {
-                        retry(3) {  // Retry up to 3 times for network issues
-                            checkout([$class: 'GitSCM',
-                                branches: [[name: '*/main']],
-                                userRemoteConfigs: [[
-                                    url: 'https://github.com/lucy12345679/fuse-blog.git',
-                                    credentialsId: 'your-credentials-id'
-                                ]],
-                                extensions: [[$class: 'CloneOption', depth: 1, shallow: true, timeout: 20]] // Shallow clone
-                            ])
-                        }
-                    } catch (Exception e) {
-                        echo "Git Checkout failed: ${e.getMessage()}"
-                        currentBuild.result = 'FAILURE'
-                        error("Stopping pipeline due to Git failure.")
-                    }
+                retry(3) { // Retry for transient issues
+                    git branch: 'main', credentialsId: 'your-credentials-id', url: 'https://github.com/lucy12345679/fuse-blog.git'
                 }
             }
         }
+    }
+
 
         stage('Build Docker Image') {
             steps {
@@ -85,23 +72,18 @@ pipeline {
             }
         }
 
-        stage('Deploy to Production') {
+        stage('Deploy') {
             steps {
                 script {
-                    try {
-                        sh '''
-                        echo "Deploying to production server..."
-                        ssh -i /home/jenkins/.ssh/id_rsa -o StrictHostKeyChecking=no ${SERVER_USER}@${SERVER_IP} "
-                            docker pull ${IMAGE_NAME} || true
-                            docker ps -aq -f name=${CONTAINER_NAME} | xargs -r docker rm -f || true
-                            docker run -d --name ${CONTAINER_NAME} -p ${APP_PORT}:${APP_PORT} ${IMAGE_NAME}
-                        "
-                        '''
-                    } catch (Exception e) {
-                        echo "Deployment failed: ${e.getMessage()}"
-                        currentBuild.result = 'FAILURE'
-                        error("Stopping pipeline due to deployment failure.")
-                    }
+                    sh '''
+                    echo "Deploying application..."
+                    ssh -i /home/jenkins/.ssh/id_rsa -o StrictHostKeyChecking=no ${SERVER_USER}@${SERVER_IP} "
+                        echo 'Pulling and running the Docker container...'
+                        docker pull ${IMAGE_NAME}
+                        docker ps -aq -f name=${IMAGE_NAME} | xargs -r docker rm -f || true
+                        docker run -d --name ${IMAGE_NAME} -p 8000:8000 ${IMAGE_NAME}
+                    "
+                    '''
                 }
             }
         }
@@ -109,19 +91,7 @@ pipeline {
 
     post {
         always {
-            node('any') {  // Run workspace cleanup on any available node
-                echo "Cleaning up workspace..."
-                cleanWs()
-            }
-        }
-        success {
-            echo "Pipeline completed successfully!"
-        }
-        failure {
-            script {
-                echo "Pipeline failed, marking as success to proceed with cleanup."
-                currentBuild.result = 'SUCCESS'
-            }
+            cleanWs()
         }
     }
 }
