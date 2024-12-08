@@ -101,29 +101,18 @@ pipeline {
         stage('Deploy to Production') {
             steps {
                 script {
-                    try {
-                        sshagent(['jenkins-ssh-credential-id']) {
-                            sh '''
-                            echo "Deploying to production server..."
-                            ssh -o StrictHostKeyChecking=no ${SERVER_USER}@${SERVER_IP} "
-                                echo 'Pulling latest Docker image...'
-                                docker pull ${IMAGE_NAME} || true
-
-                                echo 'Stopping and removing existing container if it exists...'
-                                docker ps -aq -f name=${CONTAINER_NAME} | xargs -r docker rm -f || true
-
-                                echo 'Running the new Docker container...'
-                                docker run -d --name ${CONTAINER_NAME} -p ${APP_PORT}:${APP_PORT} ${IMAGE_NAME}
-                            "
-                            '''
-                        }
-                    } catch (Exception e) {
-                        echo "Deployment failed: ${e.getMessage()}"
-                    }
+                    sh '''
+                    echo "Deploying to production server..."
+                    ssh -i /home/jenkins/.ssh/id_rsa -o StrictHostKeyChecking=no root@161.35.208.242 "
+                        docker pull fuse_blog_web || true
+                        docker ps -aq -f name=fuse_blog_web | xargs -r docker rm -f || true
+                        docker run -d --name fuse_blog_web -p 8000:8000 fuse_blog_web
+                    "
+                    '''
                 }
             }
         }
-    }
+
 
     post {
         always {
