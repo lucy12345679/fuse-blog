@@ -11,7 +11,11 @@ pipeline {
         stage('Checkout') {
             steps {
                 retry(3) {
-                    cleanWs() // Ensure workspace is clean before cloning
+                    cleanWs() // Clean workspace before checkout
+                    sh '''
+                    git config --global http.postBuffer 524288000
+                    git config --global http.version HTTP/1.1
+                    '''
                     git branch: 'main', url: 'https://github.com/lucy12345679/fuse-blog.git'
                 }
             }
@@ -121,8 +125,10 @@ pipeline {
 
     post {
         always {
-            echo "Cleaning up workspace..."
-            cleanWs()
+            node { // Ensure it's within a node context
+                echo "Cleaning up workspace..."
+                cleanWs()
+            }
         }
         success {
             echo 'Pipeline completed successfully: linting, security scan, build, tests, and static file collection!'
