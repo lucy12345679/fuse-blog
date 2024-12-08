@@ -19,14 +19,14 @@ pipeline {
                             cleanWs()
                             git branch: 'main', url: 'https://github.com/lucy12345679/fuse-blog.git'
                         } catch (Exception e) {
-                            echo "Checkout stage failed: ${e.getMessage()}"
+                            echo "Checkout failed: ${e.getMessage()}"
                         }
                     }
                 }
             }
         }
 
-        stage('Build Docker Image') {
+         stage('Build Docker Image') {
             steps {
                 script {
                     try {
@@ -102,13 +102,18 @@ pipeline {
             steps {
                 script {
                     try {
+                        // Ensure you have the SSH Agent plugin installed and configured with the correct credentials
                         sshagent(['jenkins-ssh-credential-id']) {
                             sh '''
                             echo "Deploying to production server..."
                             ssh -o StrictHostKeyChecking=no ${SERVER_USER}@${SERVER_IP} "
-                                cd /root || exit
+                                echo 'Pulling latest Docker image...'
                                 docker pull ${IMAGE_NAME} || true
+
+                                echo 'Stopping and removing existing container if it exists...'
                                 docker ps -aq -f name=${CONTAINER_NAME} | xargs -r docker rm -f || true
+
+                                echo 'Running the new Docker container...'
                                 docker run -d --name ${CONTAINER_NAME} -p ${APP_PORT}:${APP_PORT} ${IMAGE_NAME}
                             "
                             '''
@@ -121,26 +126,16 @@ pipeline {
         }
     }
 
-    post {
+       post {
         always {
-            script {
-                try {
-                    sh '''
-                    echo "Cleaning up local container..."
-                    docker ps -aq -f name=${CONTAINER_NAME} | xargs -r docker rm -f || true
-                    '''
-                } catch (Exception e) {
-                    echo "Cleanup failed: ${e.getMessage()}"
-                }
-            }
-            echo "Cleaning up workspace..."
+            echo "Pipeline completed execution."
             cleanWs()
         }
         success {
             echo "Pipeline completed successfully!"
         }
         failure {
-            echo "Pipeline failed, but marking as success to proceed."
+            echo "Pipeline failed, but marking as success."
         }
     }
 }
