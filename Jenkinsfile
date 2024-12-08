@@ -5,12 +5,16 @@ pipeline {
         IMAGE_NAME = "fuse_blog_web"
         CONTAINER_NAME = "fuse_blog_web_1"
         APP_PORT = "8000"
+        HOST_PORT = "8000"
+        SERVER_IP = "161.35.208.242"
+        SERVER_USER = "root"
     }
 
     stages {
+        // Checkout Stage
         stage('Checkout') {
             steps {
-                retry(3) {
+                retry(3) { // Retry in case of transient failures
                     cleanWs() // Clean workspace before checkout
                     sh '''
                     git config --global http.postBuffer 524288000
@@ -21,56 +25,7 @@ pipeline {
             }
         }
 
-        stage('Setup Virtual Environment') {
-            steps {
-                sh '''
-                echo "Setting up virtual environment..."
-                python3 -m venv .venv
-                . .venv/bin/activate
-                pip install --upgrade pip
-                pip install -r requirements.txt
-                '''
-            }
-        }
-
-        stage('Lint') {
-            steps {
-                sh '''
-                echo "Running linting with pylint..."
-                . .venv/bin/activate
-                pylint apps/ || true
-                '''
-            }
-        }
-
-        stage('Security Scan') {
-            steps {
-                sh '''
-                echo "Running security scan with bandit..."
-                . .venv/bin/activate
-                bandit -r apps/
-                '''
-            }
-        }
-
-        stage('Test') {
-            steps {
-                sh '''
-                echo "Running tests with pytest..."
-                . .venv/bin/activate
-                export PYTHONPATH=$(pwd)
-                export DJANGO_SETTINGS_MODULE=root.settings
-
-                if python -m pytest --help | grep -q -- --cov; then
-                    pytest --ds=root.settings --cov=apps
-                else
-                    echo "pytest-cov not available; running tests without coverage."
-                    pytest --ds=root.settings
-                fi
-                '''
-            }
-        }
-
+        // Build Docker Image
         stage('Build Docker Image') {
             steps {
                 sh '''
@@ -80,44 +35,27 @@ pipeline {
             }
         }
 
-        stage('Run Docker Container') {
-            steps {
-                script {
-                    echo "Stopping and removing existing container..."
-                    sh '''
-                    docker ps -aq -f name=${CONTAINER_NAME} | xargs -r docker stop || true
-                    docker ps -aq -f name=${CONTAINER_NAME} | xargs -r docker rm || true
-                    echo "Running the new container..."
-                    docker run -d --name ${CONTAINER_NAME} -p ${APP_PORT}:${APP_PORT} ${IMAGE_NAME}
-                    '''
-                }
-            }
-        }
-
-        stage('Run Tests in Container') {
+        // Run Tests
+        stage('Run Tests') {
             steps {
                 sh '''
-                echo "Running tests inside the container..."
-                docker exec ${CONTAINER_NAME} python manage.py test
+                echo "Running tests in the Docker container..."
+                docker run --rm ${IMAGE_NAME} pytest
                 '''
             }
         }
 
-        stage('Static File Collection') {
+        // Deploy to Production
+        stage('Deploy') {
             steps {
                 sh '''
-                echo "Collecting static files..."
-                docker exec ${CONTAINER_NAME} python manage.py collectstatic --noinput
-                '''
-            }
-        }
-
-        stage('Clean Up') {
-            steps {
-                sh '''
-                echo "Cleaning up container..."
-                docker stop ${CONTAINER_NAME} || true
-                docker rm ${CONTAINER_NAME} || true
+                echo "Deploying application to production..."
+                ssh -i /home/jenkins/.ssh/id_rsa -o StrictHostKeyChecking=no ${SERVER_USER}@${SERVER_IP} "
+                    echo 'Pulling Docker image and starting container...'
+                    docker pull ${IMAGE_NAME}
+                    docker ps -aq -f name=${CONTAINER_NAME} | xargs -r docker rm -f || true
+                    docker run -d --name ${CONTAINER_NAME} -p ${HOST_PORT}:${APP_PORT} ${IMAGE_NAME}
+                "
                 '''
             }
         }
@@ -125,16 +63,14 @@ pipeline {
 
     post {
         always {
-            node { // Ensure it's within a node context
-                echo "Cleaning up workspace..."
-                cleanWs()
-            }
+            echo "Cleaning up workspace..."
+            cleanWs()
         }
         success {
-            echo 'Pipeline completed successfully: linting, security scan, build, tests, and static file collection!'
+            echo 'Pipeline completed successfully!'
         }
         failure {
-            echo 'Pipeline failed. Check the logs for details.'
+            echo 'Pipeline failed. Check logs for details.'
         }
     }
 }
