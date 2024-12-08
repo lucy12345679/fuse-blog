@@ -14,13 +14,15 @@ pipeline {
         // Checkout Stage
         stage('Checkout') {
             steps {
-                retry(3) { // Retry in case of transient failures
-                    cleanWs() // Clean workspace before checkout
-                    sh '''
-                    git config --global http.postBuffer 524288000
-                    git config --global http.version HTTP/1.1
-                    '''
-                    git branch: 'main', url: 'https://github.com/lucy12345679/fuse-blog.git'
+                retry(3) { // Retry for transient failures
+                    cleanWs() // Clean workspace before starting
+                    withCredentials([usernamePassword(credentialsId: 'your-credentials-id', usernameVariable: 'lucy12345679', passwordVariable: 'JCkDz6PbJXBKUgN')]) {
+                        sh '''
+                        git config --global http.postBuffer 524288000
+                        git config --global http.version HTTP/1.1
+                        git clone https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/lucy12345679/fuse-blog.git .
+                        '''
+                    }
                 }
             }
         }
@@ -48,15 +50,17 @@ pipeline {
         // Deploy to Production
         stage('Deploy') {
             steps {
-                sh '''
-                echo "Deploying application to production..."
-                ssh -i /home/jenkins/.ssh/id_rsa -o StrictHostKeyChecking=no ${SERVER_USER}@${SERVER_IP} "
-                    echo 'Pulling Docker image and starting container...'
-                    docker pull ${IMAGE_NAME}
-                    docker ps -aq -f name=${CONTAINER_NAME} | xargs -r docker rm -f || true
-                    docker run -d --name ${CONTAINER_NAME} -p ${HOST_PORT}:${APP_PORT} ${IMAGE_NAME}
-                "
-                '''
+                withCredentials([sshUserPrivateKey(credentialsId: 'ssh-key-credentials-id', keyFileVariable: 'SSH_KEY')]) {
+                    sh '''
+                    echo "Deploying application to production..."
+                    ssh -i ${SSH_KEY} -o StrictHostKeyChecking=no ${SERVER_USER}@${SERVER_IP} "
+                        echo 'Pulling Docker image and starting container...'
+                        docker pull ${IMAGE_NAME}
+                        docker ps -aq -f name=${CONTAINER_NAME} | xargs -r docker rm -f || true
+                        docker run -d --name ${CONTAINER_NAME} -p ${HOST_PORT}:${APP_PORT} ${IMAGE_NAME}
+                    "
+                    '''
+                }
             }
         }
     }
