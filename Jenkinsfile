@@ -4,10 +4,10 @@ pipeline {
     environment {
         IMAGE_NAME = "fuse_blog_web"
         CONTAINER_NAME = "fuse_blog_web_${BUILD_ID}"
-        APP_PORT = "8000"                     // Application port inside the container
-        HOST_PORT = "8000"                    // Host port (dynamic allocation recommended)
-        SERVER_IP = "161.35.208.242"          // Remote server IP
-        SERVER_USER = "root"                  // SSH user
+        APP_PORT = "8000"
+        HOST_PORT = "8000"
+        SERVER_IP = "161.35.208.242"
+        SERVER_USER = "root"
     }
 
     stages {
@@ -34,15 +34,15 @@ pipeline {
                 script {
                     sh '''
                     echo "Stopping and removing any existing container..."
-                    docker ps -aq -f name=${CONTAINER_NAME} | xargs -r docker rm -f || true
+                    docker ps -aq -f name=${CONTAINER_NAME} | xargs -r docker rm -f
 
                     echo "Checking for conflicting containers using port ${HOST_PORT}..."
                     CONFLICTING_CONTAINERS=$(docker ps --filter "publish=${HOST_PORT}" -q)
                     if [ ! -z "$CONFLICTING_CONTAINERS" ]; then
                         echo "Stopping conflicting containers..."
-                        echo "$CONFLICTING_CONTAINERS" | xargs -r docker stop || true
+                        echo "$CONFLICTING_CONTAINERS" | xargs -r docker stop
                         echo "Removing conflicting containers..."
-                        echo "$CONFLICTING_CONTAINERS" | xargs -r docker rm || true
+                        echo "$CONFLICTING_CONTAINERS" | xargs -r docker rm
                     fi
 
                     echo "Running a new Docker container on host port ${HOST_PORT}..."
