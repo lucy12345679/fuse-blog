@@ -101,18 +101,22 @@ pipeline {
         stage('Deploy to Production') {
             steps {
                 script {
-                    sh '''
-                    echo "Deploying to production server..."
-                    ssh -i /home/jenkins/.ssh/id_rsa -o StrictHostKeyChecking=no root@161.35.208.242 "
-                        docker pull fuse_blog_web || true
-                        docker ps -aq -f name=fuse_blog_web | xargs -r docker rm -f || true
-                        docker run -d --name fuse_blog_web -p 8000:8000 fuse_blog_web
-                    "
-                    '''
+                    try {
+                        sh '''
+                        echo "Deploying to production server..."
+                        ssh -i /home/jenkins/.ssh/id_rsa -o StrictHostKeyChecking=no ${SERVER_USER}@${SERVER_IP} "
+                            docker pull ${IMAGE_NAME} || true
+                            docker ps -aq -f name=${CONTAINER_NAME} | xargs -r docker rm -f || true
+                            docker run -d --name ${CONTAINER_NAME} -p ${APP_PORT}:${APP_PORT} ${IMAGE_NAME}
+                        "
+                        '''
+                    } catch (Exception e) {
+                        echo "Deployment failed: ${e.getMessage()}"
+                    }
                 }
             }
         }
-
+    }
 
     post {
         always {
