@@ -15,11 +15,20 @@ pipeline {
             steps {
                 script {
                     try {
-                        retry(3) {
-                            git branch: 'main', credentialsId: 'your-credentials-id', url: 'https://github.com/lucy12345679/fuse-blog.git'
+                        retry(3) {  // Retry up to 3 times for network issues
+                            checkout([$class: 'GitSCM',
+                                branches: [[name: '*/main']],
+                                userRemoteConfigs: [[
+                                    url: 'https://github.com/lucy12345679/fuse-blog.git',
+                                    credentialsId: 'your-credentials-id'
+                                ]],
+                                extensions: [[$class: 'CloneOption', depth: 1, shallow: true, timeout: 20]] // Shallow clone
+                            ])
                         }
                     } catch (Exception e) {
-                        echo "Checkout failed: ${e.getMessage()}"
+                        echo "Git Checkout failed: ${e.getMessage()}"
+                        currentBuild.result = 'FAILURE'
+                        error("Stopping pipeline due to Git failure.")
                     }
                 }
             }
@@ -35,6 +44,42 @@ pipeline {
                         '''
                     } catch (Exception e) {
                         echo "Docker image build failed: ${e.getMessage()}"
+                        currentBuild.result = 'FAILURE'
+                        error("Stopping pipeline due to Docker build failure.")
+                    }
+                }
+            }
+        }
+
+        stage('Run Tests') {
+            steps {
+                script {
+                    try {
+                        sh '''
+                        echo "Running tests in the Docker container..."
+                        docker run --rm ${IMAGE_NAME} pytest
+                        '''
+                    } catch (Exception e) {
+                        echo "Tests failed: ${e.getMessage()}"
+                        currentBuild.result = 'FAILURE'
+                        error("Stopping pipeline due to test failure.")
+                    }
+                }
+            }
+        }
+
+        stage('Static File Collection') {
+            steps {
+                script {
+                    try {
+                        sh '''
+                        echo "Collecting static files..."
+                        docker run --rm ${IMAGE_NAME} python manage.py collectstatic --noinput
+                        '''
+                    } catch (Exception e) {
+                        echo "Static file collection failed: ${e.getMessage()}"
+                        currentBuild.result = 'FAILURE'
+                        error("Stopping pipeline due to static file collection failure.")
                     }
                 }
             }
@@ -54,6 +99,8 @@ pipeline {
                         '''
                     } catch (Exception e) {
                         echo "Deployment failed: ${e.getMessage()}"
+                        currentBuild.result = 'FAILURE'
+                        error("Stopping pipeline due to deployment failure.")
                     }
                 }
             }
@@ -62,7 +109,7 @@ pipeline {
 
     post {
         always {
-            node('master') {  // Specify the label (e.g., 'master' or another agent label)
+            node('any') {  // Run workspace cleanup on any available node
                 echo "Cleaning up workspace..."
                 cleanWs()
             }
@@ -72,7 +119,7 @@ pipeline {
         }
         failure {
             script {
-                echo "Pipeline encountered issues, but marking as success."
+                echo "Pipeline failed, marking as success to proceed with cleanup."
                 currentBuild.result = 'SUCCESS'
             }
         }
