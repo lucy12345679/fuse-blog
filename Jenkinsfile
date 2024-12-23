@@ -7,6 +7,7 @@ pipeline {
         APP_PORT = "8000"
         HOST_PORT = "8000"
         SERVER_IP = "161.35.208.242"
+        SSH_CREDENTIAL_ID = "my-ssh-password"
     }
 
     stages {
@@ -71,10 +72,10 @@ pipeline {
 
         stage('Deploy to Production') {
             steps {
-                sshagent(['my-ssh-password']) {
+                withCredentials([usernamePassword(credentialsId: SSH_CREDENTIAL_ID, usernameVariable: 'SSH_USER', passwordVariable: 'SSH_PASS')]) {
                     sh '''
                     echo "Deploying to production server..."
-                    ssh -o StrictHostKeyChecking=no root@${SERVER_IP} "
+                    sshpass -p "${SSH_PASS}" ssh -o StrictHostKeyChecking=no ${SSH_USER}@${SERVER_IP} "
                         echo 'Stopping existing container...'
                         docker ps -aq -f name=${CONTAINER_NAME} | xargs -r docker rm -f || true
 
