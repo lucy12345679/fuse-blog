@@ -7,17 +7,15 @@ pipeline {
         APP_PORT = "8000"
         HOST_PORT = "8000"
         SERVER_IP = "161.35.208.242"
-        SERVER_USER = "root"
+        CREDENTIAL_ID = "my-ssh-password" // Your actual credential ID
     }
 
     stages {
         stage('Checkout') {
             steps {
-                retry(3) { // Retry in case of transient errors
-                    cleanWs() // Clean workspace to prevent conflicts
-                    script {
-                        git branch: 'main', url: 'https://github.com/lucy12345679/fuse-blog.git'
-                    }
+                retry(3) {
+                    cleanWs()
+                    git branch: 'main', url: 'https://github.com/lucy12345679/fuse-blog.git'
                 }
             }
         }
@@ -56,12 +54,10 @@ pipeline {
 
         stage('Run Tests in Container') {
             steps {
-                script {
-                    sh '''
-                    echo "Running tests inside the container..."
-                    docker exec ${CONTAINER_NAME} python manage.py test || exit 1
-                    '''
-                }
+                sh '''
+                echo "Running tests inside the container..."
+                docker exec ${CONTAINER_NAME} python manage.py test
+                '''
             }
         }
 
@@ -76,18 +72,17 @@ pipeline {
 
         stage('Deploy to Production') {
             steps {
-                sshagent(['jenkins-ssh-credential-id']) {
-                    script {
-                        sh '''
-                        echo "Deploying to production server..."
-                        ssh -o StrictHostKeyChecking=no ${SERVER_USER}@${SERVER_IP} "
-                            cd /root || exit
-                            docker pull ${IMAGE_NAME} || true
-                            docker ps -aq -f name=${CONTAINER_NAME} | xargs -r docker rm -f || true
-                            docker run -d --name ${CONTAINER_NAME} -p ${APP_PORT}:${APP_PORT} ${IMAGE_NAME}
-                        "
-                        '''
-                    }
+                withCredentials([usernamePassword(credentialsId: 'my-ssh-password', usernameVariable: 'SSH_USER', passwordVariable: 'SSH_PASS')]) {
+                    sh '''
+                    echo "Deploying to production server..."
+                    sshpass -p "${SSH_PASS}" ssh -o StrictHostKeyChecking=no ${SSH_USER}@${SERVER_IP} "
+                        echo 'Stopping existing container...'
+                        docker ps -aq -f name=${CONTAINER_NAME} | xargs -r docker rm -f || true
+
+                        echo 'Running new Docker container...'
+                        docker run -d --name ${CONTAINER_NAME} -p ${APP_PORT}:${APP_PORT} ${IMAGE_NAME}
+                    "
+                    '''
                 }
             }
         }
@@ -95,17 +90,15 @@ pipeline {
 
     post {
         always {
-            script {
-                sh '''
-                echo "Cleaning up local container..."
-                docker ps -aq -f name=${CONTAINER_NAME} | xargs -r docker rm -f || true
-                '''
-                echo "Cleaning up workspace..."
-                cleanWs()
-            }
+            sh '''
+            echo "Cleaning up local container..."
+            docker ps -aq -f name=${CONTAINER_NAME} | xargs -r docker rm -f || true
+            '''
+            echo "Cleaning up workspace..."
+            cleanWs()
         }
         success {
-            echo "Pipeline completed successfully!"
+            echo "Pipeline completed successfully: linting, security scan, build, and static file collection!"
         }
         failure {
             echo "Pipeline failed. Check the logs for details."
