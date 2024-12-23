@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         IMAGE_NAME = "fuse_blog_web"
-        CONTAINER_NAME = "fuse_blog_web_1"
+        CONTAINER_NAME = "fuse_blog_web_${BUILD_ID}"
         APP_PORT = "8000"
         HOST_PORT = "8000"
         SERVER_IP = "161.35.208.242"
@@ -11,23 +11,17 @@ pipeline {
     }
 
     stages {
-        // Checkout Stage
         stage('Checkout') {
             steps {
-                retry(3) { // Retry for transient failures
-                    cleanWs() // Clean workspace before starting
-                    withCredentials([usernamePassword(credentialsId: 'your-credentials-id', usernameVariable: 'lucy12345679', passwordVariable: 'JCkDz6PbJXBKUgN')]) {
-                        sh '''
-                        git config --global http.postBuffer 524288000
-                        git config --global http.version HTTP/1.1
-                        git clone https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/lucy12345679/fuse-blog.git .
-                        '''
+                retry(3) { // Retry in case of transient errors
+                    cleanWs() // Clean workspace to prevent conflicts
+                    script {
+                        git branch: 'main', url: 'https://github.com/lucy12345679/fuse-blog.git'
                     }
                 }
             }
         }
 
-        // Build Docker Image
         stage('Build Docker Image') {
             steps {
                 sh '''
@@ -37,29 +31,63 @@ pipeline {
             }
         }
 
-        // Run Tests
-        stage('Run Tests') {
+        stage('Run Docker Container') {
+            steps {
+                script {
+                    sh '''
+                    echo "Stopping and removing any existing container..."
+                    docker ps -aq -f name=${CONTAINER_NAME} | xargs -r docker rm -f || true
+
+                    echo "Checking for conflicting containers using port ${HOST_PORT}..."
+                    CONFLICTING_CONTAINERS=$(docker ps --filter "publish=${HOST_PORT}" -q)
+                    if [ ! -z "$CONFLICTING_CONTAINERS" ]; then
+                        echo "Stopping conflicting containers..."
+                        echo "$CONFLICTING_CONTAINERS" | xargs -r docker stop || true
+                        echo "Removing conflicting containers..."
+                        echo "$CONFLICTING_CONTAINERS" | xargs -r docker rm || true
+                    fi
+
+                    echo "Running a new Docker container on host port ${HOST_PORT}..."
+                    docker run -d --name ${CONTAINER_NAME} -p ${HOST_PORT}:${APP_PORT} ${IMAGE_NAME}
+                    '''
+                }
+            }
+        }
+
+        stage('Run Tests in Container') {
+            steps {
+                script {
+                    sh '''
+                    echo "Running tests inside the container..."
+                    docker exec ${CONTAINER_NAME} python manage.py test || exit 1
+                    '''
+                }
+            }
+        }
+
+        stage('Static File Collection') {
             steps {
                 sh '''
-                echo "Running tests in the Docker container..."
-                docker run --rm ${IMAGE_NAME} pytest
+                echo "Collecting static files..."
+                docker exec ${CONTAINER_NAME} python manage.py collectstatic --noinput
                 '''
             }
         }
 
-        // Deploy to Production
-        stage('Deploy') {
+        stage('Deploy to Production') {
             steps {
-                withCredentials([sshUserPrivateKey(credentialsId: 'ssh-key-credentials-id', keyFileVariable: 'SSH_KEY')]) {
-                    sh '''
-                    echo "Deploying application to production..."
-                    ssh -i ${SSH_KEY} -o StrictHostKeyChecking=no ${SERVER_USER}@${SERVER_IP} "
-                        echo 'Pulling Docker image and starting container...'
-                        docker pull ${IMAGE_NAME}
-                        docker ps -aq -f name=${CONTAINER_NAME} | xargs -r docker rm -f || true
-                        docker run -d --name ${CONTAINER_NAME} -p ${HOST_PORT}:${APP_PORT} ${IMAGE_NAME}
-                    "
-                    '''
+                sshagent(['jenkins-ssh-credential-id']) {
+                    script {
+                        sh '''
+                        echo "Deploying to production server..."
+                        ssh -o StrictHostKeyChecking=no ${SERVER_USER}@${SERVER_IP} "
+                            cd /root || exit
+                            docker pull ${IMAGE_NAME} || true
+                            docker ps -aq -f name=${CONTAINER_NAME} | xargs -r docker rm -f || true
+                            docker run -d --name ${CONTAINER_NAME} -p ${APP_PORT}:${APP_PORT} ${IMAGE_NAME}
+                        "
+                        '''
+                    }
                 }
             }
         }
@@ -67,14 +95,20 @@ pipeline {
 
     post {
         always {
-            echo "Cleaning up workspace..."
-            cleanWs()
+            script {
+                sh '''
+                echo "Cleaning up local container..."
+                docker ps -aq -f name=${CONTAINER_NAME} | xargs -r docker rm -f || true
+                '''
+                echo "Cleaning up workspace..."
+                cleanWs()
+            }
         }
         success {
-            echo 'Pipeline completed successfully!'
+            echo "Pipeline completed successfully!"
         }
         failure {
-            echo 'Pipeline failed. Check logs for details.'
+            echo "Pipeline failed. Check the logs for details."
         }
     }
 }
