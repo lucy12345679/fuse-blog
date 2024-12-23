@@ -71,7 +71,7 @@ pipeline {
 
         stage('Deploy to Production') {
             steps {
-                sshagent(['my-ssh-key-credential-id']) {
+                sshagent(['my-ssh-password']) {
                     sh '''
                     echo "Deploying to production server..."
                     ssh -o StrictHostKeyChecking=no root@${SERVER_IP} "
