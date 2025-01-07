@@ -15,6 +15,7 @@ click==8.1.3
 click-didyoumean==0.3.0
 click-plugins==1.1.1
 click-repl==0.2.0
+coverage==7.6.8
 cryptography==38.0.4
 cssselect2==0.7.0
 defusedxml==0.7.1
@@ -66,6 +67,7 @@ PyJWT==2.6.0
 pylint==3.3.2
 PyPDF3==1.0.6
 pytest==8.3.4
+pytest-cov==4.0.0
 pytest-django==4.9.0
 python-bidi==0.4.2
 python-crontab==2.6.0
@@ -100,4 +102,3 @@ vine==5.0.0
 wcwidth==0.2.5
 webencodings==0.5.1
 xhtml2pdf==0.2.8
-pytest-cov==4.0.0

@@ -1,22 +1,36 @@
-version: '3.8'
-
+version: "3.9"
 services:
-  web:
-    build:
-      context: .
-    container_name: fuse_blog_web_1
-    command: python manage.py runserver 0.0.0.0:8000
+  django:
+    build: .
+    container_name: django
+    command: gunicorn --bind 0.0.0.0:8000 root.wsgi
+    expose:
+      - "8000"
     volumes:
       - .:/app
-    ports:
-      - "8000:8000"
-    environment:
-      DEBUG: "1"
+      - static_volume:/app/static
     depends_on:
-      - redis
-
-  redis:
-    image: redis:alpine
-    container_name: redis
+      - db
+  db:
+    image: postgres:14.0-alpine
+    container_name: postgres_db
+    environment:
+      - POSTGRES_DB=blog
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=1
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+  nginx:
+    build: ./nginx
+    container_name: nginx
     ports:
-      - "6379:6379"
+      - "80:80"
+    volumes:
+      - static_volume:/app/static
+    depends_on:
+      - django
+volumes:
+  postgres_data:
+  static_volume:
+
+

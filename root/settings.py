@@ -1,4 +1,3 @@
-
 """
 Django settings for root project.
 
@@ -28,7 +27,7 @@ SECRET_KEY = 'django-insecure-=9=s9i7&3d%41pp5d1&bap7*(kd4o!_0&m*arh0h*q*o$y4c5+
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['161.35.208.242']
+ALLOWED_HOSTS = ['161.35.208.242', 'localhost', '127.0.0.1']
 
 AUTHENTICATION_BACKENDS = [
     # Needed to login by username in Django admin, regardless of `allauth`
@@ -186,8 +185,11 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.1/howto/static-files/
 
-STATIC_URL = 'static/'
-STATIC_ROOT = os.path.join(BASE_DIR / 'static')
+STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'static/')
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, 'apps/static'),
+]
 
 MEDIA_URL = 'media/'
 MEDIA_ROOT = os.path.join(BASE_DIR / 'media')
@@ -197,8 +199,6 @@ MEDIA_ROOT = os.path.join(BASE_DIR / 'media')
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 CKEDITOR_UPLOAD_PATH = "media/"
-
-
 
 CKEDITOR_CONFIGS = {
     'default': {
